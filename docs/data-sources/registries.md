@@ -10,10 +10,10 @@ description: |-
 
 List of device registries in a project.
 
-## Example Usage
+## Example usage
 
 ```terraform
-# Service credential based configuration for the Clearblade IoT Core provider
+# Service credential-based configuration for the Clearblade IoT Core provider
 terraform {
   required_providers {
     clearblade = {
@@ -37,15 +37,15 @@ data "clearblade_registries" "all" {
 
 ### Required
 
-- `project` (String) The name of the project to list device registries for.
-- `region` (String) The name of the region to list device registries for.
+- `project` (String) The project's name to list device registries
+- `region` (String) The region's name to list device registries
 
-### Read-Only
+### Read-only
 
 - `device_registries` (Attributes List) (see [below for nested schema](#nestedatt--device_registries))
 
 <a id="nestedatt--device_registries"></a>
-### Nested Schema for `device_registries`
+### Nested schema for `device_registries`
 
 Required:
 
@@ -53,7 +53,7 @@ Required:
 - `mqtt_config` (Attributes) The configuration of MQTT for a device registry. (see [below for nested schema](#nestedatt--device_registries--mqtt_config))
 - `state_notification_config` (Attributes) The configuration for notification of new states received from the device. (see [below for nested schema](#nestedatt--device_registries--state_notification_config))
 
-Read-Only:
+Read-only:
 
 - `credentials` (Attributes List) (see [below for nested schema](#nestedatt--device_registries--credentials))
 - `event_notification_configs` (Attributes List) (see [below for nested schema](#nestedatt--device_registries--event_notification_configs))
@@ -62,63 +62,63 @@ Read-Only:
 - `name` (String)
 
 <a id="nestedatt--device_registries--http_config"></a>
-### Nested Schema for `device_registries.http_config`
+### Nested schema for `device_registries.http_config`
 
-Read-Only:
+Read-only:
 
-- `http_enabled_state` (String) If enabled, allows devices to use DeviceService via the HTTP protocol. Otherwise, any requests to DeviceService will fail for this registry.
+- `http_enabled_state` (String) Devices can use DeviceService via the HTTP protocol if enabled. Otherwise, any requests to DeviceService will fail for this registry.
 
 
 <a id="nestedatt--device_registries--mqtt_config"></a>
-### Nested Schema for `device_registries.mqtt_config`
+### Nested schema for `device_registries.mqtt_config`
 
-Read-Only:
+Read-only:
 
 - `mqtt_enabled_state` (String) If enabled, allows connections using the MQTT protocol. Otherwise, MQTT connections to this registry will fail.
 
 
 <a id="nestedatt--device_registries--state_notification_config"></a>
-### Nested Schema for `device_registries.state_notification_config`
+### Nested schema for `device_registries.state_notification_config`
 
-Read-Only:
+Read-only:
 
 - `pubsub_topic_name` (String) A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.
 
 
 <a id="nestedatt--device_registries--credentials"></a>
-### Nested Schema for `device_registries.credentials`
+### Nested schema for `device_registries.credentials`
 
 Required:
 
 - `credential` (Attributes) A server-stored registry credential used to validate device credentials. (see [below for nested schema](#nestedatt--device_registries--credentials--credential))
 
 <a id="nestedatt--device_registries--credentials--credential"></a>
-### Nested Schema for `device_registries.credentials.credential`
+### Nested schema for `device_registries.credentials.credential`
 
 Required:
 
 - `public_key_certificate` (Attributes) A public key certificate format and data. (see [below for nested schema](#nestedatt--device_registries--credentials--credential--public_key_certificate))
 
 <a id="nestedatt--device_registries--credentials--credential--public_key_certificate"></a>
-### Nested Schema for `device_registries.credentials.credential.public_key_certificate`
+### Nested schema for `device_registries.credentials.credential.public_key_certificate`
 
 Required:
 
 - `x509_certificate_detail` (Attributes) The certificate details. Used only for X.509 certificates. (see [below for nested schema](#nestedatt--device_registries--credentials--credential--public_key_certificate--x509_certificate_detail))
 
-Read-Only:
+Read-only:
 
 - `certificate` (String) The certificate data.
 - `format` (String) The certificate format.
 
 <a id="nestedatt--device_registries--credentials--credential--public_key_certificate--x509_certificate_detail"></a>
-### Nested Schema for `device_registries.credentials.credential.public_key_certificate.x509_certificate_detail`
+### Nested schema for `device_registries.credentials.credential.public_key_certificate.x509_certificate_detail`
 
-Read-Only:
+Read-only:
 
 - `expiry_time` (String) The time the certificate becomes invalid.
 - `issuer` (String) The entity that signed the certificate.
-- `public_key_type` (String) The type of public key in the certificate.
+- `public_key_type` (String) The certificate's public key type.
 - `signature_algorithm` (String) The algorithm used to sign the certificate.
 - `start_time` (String) The time the certificate becomes valid.
 - `subject` (String) The entity the certificate and public key belong to.
@@ -128,18 +128,16 @@ Read-Only:
 
 
 <a id="nestedatt--device_registries--event_notification_configs"></a>
-### Nested Schema for `device_registries.event_notification_configs`
+### Nested schema for `device_registries.event_notification_configs`
 
 Required:
 
 - `event_notification_config` (Attributes) The configuration for forwarding telemetry events. (see [below for nested schema](#nestedatt--device_registries--event_notification_configs--event_notification_config))
 
 <a id="nestedatt--device_registries--event_notification_configs--event_notification_config"></a>
-### Nested Schema for `device_registries.event_notification_configs.event_notification_config`
+### Nested schema for `device_registries.event_notification_configs.event_notification_config`
 
-Read-Only:
+Read-only:
 
 - `pubsub_topic_name` (String) A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.
-- `subfolder_matches` (String) This field is used only for telemetry events; subfolders are not supported for state changes.
-
-
+- `subfolder_matches` (String) Only for telemetry events; subfolders are not supported for state changes.
