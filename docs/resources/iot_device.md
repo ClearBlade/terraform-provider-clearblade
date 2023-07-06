@@ -10,10 +10,10 @@ description: |-
 
 
 
-## Example Usage
+## Example usage
 
 ```terraform
-# Service credential based configuration for the Clearblade IoT Core provider
+# Service credential-based configuration for the ClearBlade IoT Core provider
 terraform {
   required_providers {
     clearblade = {
@@ -63,13 +63,10 @@ resource "google_cloudiot_device" "advanced-device" {
 
 ### Required
 
-- `name` (String) The name of the device.
-- `project` (String) The name of the device registry.
-- `region` (String) The name of the device registry.
-- `registry` (String) The name of the device registry.
-
+- `name` (String) The device name.
+- `project` (String) The device registry name.
+- `region` (String) The device registry name.
+- `registry` (String) The device registry name.
 ### Read-Only
 
 - `last_updated` (String)
-
-
