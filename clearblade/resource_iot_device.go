@@ -38,11 +38,10 @@ type deviceResource struct {
 }
 
 type deviceResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	NumID       types.String `tfsdk:"num_id"`
-	Credentials types.List   `tfsdk:"credentials"`
-	// Credentials        []DeviceCredentialsModel `tfsdk:"credentials"`
+	ID                 types.String `tfsdk:"id"`
+	Name               types.String `tfsdk:"name"`
+	NumID              types.String `tfsdk:"num_id"`
+	Credentials        types.List   `tfsdk:"credentials"`
 	LastHeartbeatTime  types.String `tfsdk:"last_heartbeat_time"`
 	LastEventTime      types.String `tfsdk:"last_event_time"`
 	LastStateTime      types.String `tfsdk:"last_state_time"`
@@ -512,50 +511,8 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	if plan.Credentials.IsNull() {
 		tflog.Debug(ctx, "value detected NULL - CREATE")
 		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
-	}
-
-	if plan.Credentials.IsUnknown() {
-		var credentials []DeviceCredentialsModel
-
-		for _, credential := range device.Credentials {
-			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-
-	}
-
-	if !plan.Credentials.IsUnknown() && !plan.Credentials.IsNull() {
-		var credentials []DeviceCredentialsModel
-
-		for _, credential := range device.Credentials {
-			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		if credentials == nil {
-			tflog.Debug(ctx, "Known value detected NULL - Credentials - CREATE")
-		} else {
-			plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-			// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		}
-
+	} else {
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), createDeviceCredentialsModel(device.Credentials))
 	}
 
 	if plan.Metadata.IsNull() {
@@ -567,11 +524,6 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 			ctx = tflog.SetField(ctx, "state attributes", s)
 			attributes[k] = types.StringValue(s)
 		}
-		// str := fmt.Sprintf("%+v", device.Metadata)
-		// str, err := json.Marshal(device.Metadata)
-		// if err != nil {
-		// 	panic(err)
-		// }
 		plan.Metadata, _ = types.MapValueFrom(ctx, plan.Metadata.ElementType(ctx), attributes)
 	}
 
@@ -703,10 +655,9 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if state.Credentials.IsNull() {
 		tflog.Debug(ctx, "value detected NULL - READ")
 		state.Credentials = types.ListNull(state.Credentials.ElementType(ctx))
-		// state.Credentials = types.SetNull(state.Credentials.ElementType(ctx))
 	} else {
 		tflog.Debug(ctx, "value detected KNOWN - READ")
-		var credentials []DeviceCredentialsModel
+		var credentials = make([]DeviceCredentialsModel, 0)
 
 		for _, credential := range device.Credentials {
 			m := DeviceCredentialsModel{
@@ -721,7 +672,6 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 			credentials = append(credentials, m)
 		}
 		state.Credentials, _ = types.ListValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
-		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
 	}
 
 	// Set refreshed state
@@ -885,50 +835,8 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if plan.Credentials.IsNull() {
 		tflog.Debug(ctx, "value detected NULL - CREATE")
 		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
-	}
-
-	if plan.Credentials.IsUnknown() {
-		var credentials []DeviceCredentialsModel
-
-		for _, credential := range device.Credentials {
-			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-
-	}
-
-	if !plan.Credentials.IsUnknown() && !plan.Credentials.IsNull() {
-		var credentials []DeviceCredentialsModel
-
-		for _, credential := range device.Credentials {
-			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		if credentials == nil {
-			tflog.Debug(ctx, "Known value detected NULL - Credentials - UPDATE")
-		} else {
-			plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-			// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		}
-
+	} else {
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), createDeviceCredentialsModel(device.Credentials))
 	}
 
 	// Set state to fully populated data
@@ -990,4 +898,23 @@ func (r *deviceResource) Configure(ctx context.Context, req resource.ConfigureRe
 	}
 
 	r.client = client
+}
+
+func createDeviceCredentialsModel(deviceCreds []*iot.DeviceCredential) []DeviceCredentialsModel {
+	var credentials = make([]DeviceCredentialsModel, 0)
+
+	for _, credential := range deviceCreds {
+		m := DeviceCredentialsModel{
+			PublicKeyCertificate: DevicePublicKeyCertificateModel{
+				ExpirationTime: types.StringValue(credential.ExpirationTime),
+				PublicKey: PublicKeyModel{
+					Format: types.StringValue(credential.PublicKey.Format),
+					Key:    types.StringValue(credential.PublicKey.Key),
+				},
+			},
+		}
+		credentials = append(credentials, m)
+	}
+
+	return credentials
 }
