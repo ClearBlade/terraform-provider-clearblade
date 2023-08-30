@@ -271,67 +271,11 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	defer cancel()
 
 	// Generate API request body from plan
-	credentials := []*iot.RegistryCredential{}
-	if len(plan.Credentials.Elements()) > 0 {
 
-		var credentialsModel []CredentialsModel
-		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
-		for _, v := range credentialsModel {
-			credentials = append(credentials, &iot.RegistryCredential{
-				PublicKeyCertificate: &iot.PublicKeyCertificate{
-					Format:      v.PublicKeyCertificate.Format.ValueString(),
-					Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
-					X509Details: &iot.X509CertificateDetails{
-						Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
-						Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
-						StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
-						ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
-						SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
-						PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
-					},
-				},
-			})
-		}
-	}
-
-	event_notification_configs := []*iot.EventNotificationConfig{}
-	for _, v := range plan.EventNotificationConfigs {
-		event_notification_configs = append(event_notification_configs, &iot.EventNotificationConfig{
-			PubsubTopicName:  v.PubsubTopicName.ValueString(),
-			SubfolderMatches: v.SubfolderMatches.ValueString(),
-		})
-	}
-
-	var stateNotificationConfig StateNotificationConfigModel
-	plan.StateNotificationConfig.As(ctx, &stateNotificationConfig, basetypes.ObjectAsOptions{})
-	var mqttConfig MqttConfigModel
-	plan.MqttConfig.As(ctx, &mqttConfig, basetypes.ObjectAsOptions{})
-	var httpConfig HttpConfigModel
-	plan.HttpConfig.As(ctx, &httpConfig, basetypes.ObjectAsOptions{})
-
-	createRequestPayload := iot.DeviceRegistry{
-		Id:                       plan.ID.ValueString(),
-		Name:                     plan.Name.ValueString(),
-		LogLevel:                 plan.LogLevel.ValueString(),
-		EventNotificationConfigs: event_notification_configs,
-		Credentials:              credentials,
-		StateNotificationConfig: &iot.StateNotificationConfig{
-			PubsubTopicName: stateNotificationConfig.PubsubTopicName.ValueString(),
-		},
-		MqttConfig: &iot.MqttConfig{
-			MqttEnabledState: mqttConfig.MqttEnabledState.ValueString(),
-		},
-		HttpConfig: &iot.HttpConfig{
-			HttpEnabledState: httpConfig.HttpEnabledState.ValueString(),
-		},
-	}
-
-	payloadString := fmt.Sprintf("%+v", createRequestPayload)
-	ctx = tflog.SetField(ctx, "create payload in CREATE", payloadString)
-
-	// Create a new device registry resource on ClearBlade IoT Core
+	// Create a registry
 	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"))
-	registry, err := r.client.Projects.Locations.Registries.Create(parent, &createRequestPayload).Do()
+	registry, err := r.client.Projects.Locations.Registries.Create(parent, createRegistryApiRequestFromPlan(ctx, &plan)).Do()
+
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating a device registry",
@@ -343,128 +287,7 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	tflog.Debug(ctx, "Created a device registry")
 
 	// Map response body to schema and populate Computed attribute values
-	plan.Name = types.StringValue(registry.Name)
-	plan.LogLevel = types.StringValue(registry.LogLevel)
-
-	plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
-	for _, eventNotificationConfig := range registry.EventNotificationConfigs {
-		plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
-			PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
-			SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
-		})
-	}
-
-	if plan.StateNotificationConfig.IsNull() {
-		attributes := map[string]attr.Value{
-			"pubsub_topic_name": types.StringNull(),
-		}
-		plan.StateNotificationConfig = types.ObjectValueMust(StateNotificationConfigModelTypes, attributes)
-	} else {
-		ctx = tflog.SetField(ctx, "processing pubsub topic", registry.StateNotificationConfig.PubsubTopicName)
-		tflog.Info(ctx, "processing pubsub")
-		attributes := map[string]attr.Value{
-			"pubsub_topic_name": types.StringValue(registry.StateNotificationConfig.PubsubTopicName),
-		}
-		plan.StateNotificationConfig = types.ObjectValueMust(StateNotificationConfigModelTypes, attributes)
-	}
-
-	if plan.MqttConfig.IsNull() {
-		attributes := map[string]attr.Value{
-			"mqtt_enabled_state": types.StringNull(),
-		}
-		plan.MqttConfig = types.ObjectValueMust(MqttConfigModelTypes, attributes)
-	} else {
-		attributes := map[string]attr.Value{
-			"mqtt_enabled_state": types.StringValue(registry.MqttConfig.MqttEnabledState),
-		}
-		plan.MqttConfig = types.ObjectValueMust(MqttConfigModelTypes, attributes)
-	}
-
-	if plan.HttpConfig.IsNull() {
-		attributes := map[string]attr.Value{
-			"http_enabled_state": types.StringNull(),
-		}
-		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
-	} else {
-		attributes := map[string]attr.Value{
-			"http_enabled_state": types.StringValue(registry.HttpConfig.HttpEnabledState),
-		}
-		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
-	}
-
-	if plan.Credentials.IsNull() {
-		tflog.Debug(ctx, "value detected NULL - CREATE")
-		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
-		// plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
-	}
-
-	if plan.Credentials.IsUnknown() {
-		tflog.Debug(ctx, "value detected UNKNOWN - CREATE")
-
-		registryString := fmt.Sprintf("%+v", registry.Credentials)
-		ctx = tflog.SetField(ctx, "registryString - CREATE", registryString)
-
-		var credentials []CredentialsModel
-
-		for _, credential := range registry.Credentials {
-			m := CredentialsModel{
-				PublicKeyCertificate: PublicKeyCertificateModel{
-					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
-					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
-					X509Details: X509CertificateDetailsModel{
-						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-	}
-
-	if !plan.Credentials.IsUnknown() && !plan.Credentials.IsNull() {
-		tflog.Debug(ctx, "value detected KNOWN - CREATE")
-
-		registryString := fmt.Sprintf("%+v", len(registry.Credentials))
-		ctx = tflog.SetField(ctx, "length registryString - CREATE", registryString)
-
-		var credentials []CredentialsModel
-
-		for _, credential := range registry.Credentials {
-			m := CredentialsModel{
-				PublicKeyCertificate: PublicKeyCertificateModel{
-					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
-					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
-					X509Details: X509CertificateDetailsModel{
-						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		if credentials == nil {
-			tflog.Debug(ctx, "nil value detected - CREATE")
-			// resp.Diagnostics.AddError(
-			// 	"Error",
-			// 	"Null list was set in the template",
-			// )
-			// return
-		} else {
-			plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-			// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		}
-
-	}
+	mapCbDeviceRegistryToPlanSchema(ctx, &plan, registry)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -525,30 +348,9 @@ func (r *deviceRegistryResource) Read(ctx context.Context, req resource.ReadRequ
 	if state.Credentials.IsNull() {
 		tflog.Debug(ctx, "value detected NULL - READ")
 		state.Credentials = types.ListNull(state.Credentials.ElementType(ctx))
-		// state.Credentials = types.SetNull(state.Credentials.ElementType(ctx))
 	} else {
 		tflog.Debug(ctx, "value detected KNOWN - READ")
-		var credentials []CredentialsModel
-
-		for _, credential := range registry.Credentials {
-			m := CredentialsModel{
-				PublicKeyCertificate: PublicKeyCertificateModel{
-					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
-					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
-					X509Details: X509CertificateDetailsModel{
-						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		state.Credentials, _ = types.ListValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
-		// state.Credentials, _ = types.SetValueFrom(ctx, state.Credentials.ElementType(ctx), credentials)
+		state.Credentials, _ = types.ListValueFrom(ctx, state.Credentials.ElementType(ctx), createPlanRegistryCredsFromCb(registry.Credentials))
 	}
 
 	// Set refreshed state
@@ -573,74 +375,13 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Generate API request body from plan
-	credentials := []*iot.RegistryCredential{}
-	if len(plan.Credentials.Elements()) > 0 {
-		var credentialsModel []CredentialsModel
-		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
-
-		for _, v := range credentialsModel {
-			credentials = append(credentials, &iot.RegistryCredential{
-				PublicKeyCertificate: &iot.PublicKeyCertificate{
-					Format:      v.PublicKeyCertificate.Format.ValueString(),
-					Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
-					X509Details: &iot.X509CertificateDetails{
-						Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
-						Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
-						StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
-						ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
-						SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
-						PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
-					},
-				},
-			})
-		}
-	}
-
-	eventNotificationConfigs := []*iot.EventNotificationConfig{}
-	for _, v := range plan.EventNotificationConfigs {
-		tflog.Debug(ctx, "registry update event 1")
-		ctx = tflog.SetField(ctx, "registry update event 1 notify pubsub topic", v.PubsubTopicName.ValueString())
-		ctx = tflog.SetField(ctx, "registry update event 1 notify subfolder matches", v.SubfolderMatches.ValueString())
-		eventNotificationConfigs = append(eventNotificationConfigs, &iot.EventNotificationConfig{
-			PubsubTopicName:  v.PubsubTopicName.ValueString(),
-			SubfolderMatches: v.SubfolderMatches.ValueString(),
-		})
-	}
-
-	var stateNotificationConfig StateNotificationConfigModel
-	plan.StateNotificationConfig.As(ctx, &stateNotificationConfig, basetypes.ObjectAsOptions{})
-	var mqttConfig MqttConfigModel
-	plan.MqttConfig.As(ctx, &mqttConfig, basetypes.ObjectAsOptions{})
-	var httpConfig HttpConfigModel
-	plan.HttpConfig.As(ctx, &httpConfig, basetypes.ObjectAsOptions{})
-
-	updateRequestPayload := iot.DeviceRegistry{
-		EventNotificationConfigs: eventNotificationConfigs,
-		Credentials:              credentials,
-		Id:                       plan.ID.ValueString(),
-		Name:                     plan.Name.ValueString(),
-		StateNotificationConfig: &iot.StateNotificationConfig{
-			PubsubTopicName: stateNotificationConfig.PubsubTopicName.ValueString(),
-		},
-		MqttConfig: &iot.MqttConfig{
-			MqttEnabledState: mqttConfig.MqttEnabledState.ValueString(),
-		},
-		HttpConfig: &iot.HttpConfig{
-			HttpEnabledState: httpConfig.HttpEnabledState.ValueString(),
-		},
-		LogLevel: plan.LogLevel.ValueString(),
-	}
-
-	payloadString := fmt.Sprintf("%+v", updateRequestPayload)
-	ctx = tflog.SetField(ctx, "create payload in UPDATE", payloadString)
 
 	// Update an existing registry
 	parent := fmt.Sprintf("projects/%s/locations/%s/registries/%s", os.Getenv("CLEARBLADE_PROJECT"), os.Getenv("CLEARBLADE_REGION"), plan.ID.ValueString())
 
 	_, err := r.client.Projects.Locations.Registries.
-		Patch(parent, &updateRequestPayload).
+		Patch(parent, createRegistryApiRequestFromPlan(ctx, &plan)).
 		UpdateMask(`httpConfig.http_enabled_state,logLevel,mqttConfig.mqtt_enabled_state,stateNotificationConfig.pubsub_topic_name,credentials,eventNotificationConfigs`).Do()
-	// ["eventNotificationConfigs","stateNotificationConfig.pubsub_topic_name","mqttConfig.mqtt_enabled_state","httpConfig.http_enabled_state","logLevel","credentials"]
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -663,88 +404,7 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	}
 
 	// Update registry resource - Map response body to schema and populate Computed attribute values
-	plan.Name = types.StringValue(registry.Name)
-	plan.LogLevel = types.StringValue(registry.LogLevel)
-
-	if plan.StateNotificationConfig.IsNull() {
-		attributes := map[string]attr.Value{
-			"pubsub_topic_name": types.StringNull(),
-		}
-		plan.StateNotificationConfig = types.ObjectValueMust(StateNotificationConfigModelTypes, attributes)
-	} else {
-		attributes := map[string]attr.Value{
-			"pubsub_topic_name": types.StringValue(registry.StateNotificationConfig.PubsubTopicName),
-		}
-		plan.StateNotificationConfig = types.ObjectValueMust(StateNotificationConfigModelTypes, attributes)
-	}
-
-	if plan.MqttConfig.IsNull() {
-		attributes := map[string]attr.Value{
-			"mqtt_enabled_state": types.StringNull(),
-		}
-		plan.MqttConfig = types.ObjectValueMust(MqttConfigModelTypes, attributes)
-	} else {
-		attributes := map[string]attr.Value{
-			"mqtt_enabled_state": types.StringValue(registry.MqttConfig.MqttEnabledState),
-		}
-		plan.MqttConfig = types.ObjectValueMust(MqttConfigModelTypes, attributes)
-	}
-
-	if plan.HttpConfig.IsNull() {
-		attributes := map[string]attr.Value{
-			"http_enabled_state": types.StringNull(),
-		}
-		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
-	} else {
-		attributes := map[string]attr.Value{
-			"http_enabled_state": types.StringValue(registry.HttpConfig.HttpEnabledState),
-		}
-		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
-	}
-
-	if plan.EventNotificationConfigs == nil || (reflect.ValueOf(plan.EventNotificationConfigs).Kind() == reflect.Ptr && reflect.ValueOf(plan.EventNotificationConfigs).IsNil()) {
-
-	} else {
-
-		plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
-		for _, eventNotificationConfig := range registry.EventNotificationConfigs {
-			plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
-				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
-				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
-			})
-		}
-	}
-
-	if plan.Credentials.IsNull() {
-		tflog.Debug(ctx, "value detected NULL - UPDATE")
-		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
-		// plan.Credentials = types.SetNull(plan.Credentials.ElementType(ctx))
-	}
-
-	if plan.Credentials.IsUnknown() {
-		tflog.Debug(ctx, "value detected UNKNOWN - UPDATE")
-		var credentials []CredentialsModel
-
-		for _, credential := range registry.Credentials {
-			m := CredentialsModel{
-				PublicKeyCertificate: PublicKeyCertificateModel{
-					Format:      types.StringValue(credential.PublicKeyCertificate.Format),
-					Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
-					X509Details: X509CertificateDetailsModel{
-						Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
-						Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
-						StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
-						ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
-						SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
-						PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
-					},
-				},
-			}
-			credentials = append(credentials, m)
-		}
-		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-		// plan.Credentials, _ = types.SetValueFrom(ctx, plan.Credentials.ElementType(ctx), credentials)
-	}
+	mapCbDeviceRegistryToPlanSchema(ctx, &plan, registry)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -806,4 +466,144 @@ func (r *deviceRegistryResource) Configure(ctx context.Context, req resource.Con
 	}
 
 	r.client = client
+}
+
+func createRegistryApiRequestFromPlan(ctx context.Context, plan *deviceRegistryResourceModel) *iot.DeviceRegistry {
+	credentials := []*iot.RegistryCredential{}
+	if len(plan.Credentials.Elements()) > 0 {
+
+		var credentialsModel []CredentialsModel
+		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		for _, v := range credentialsModel {
+			credentials = append(credentials, &iot.RegistryCredential{
+				PublicKeyCertificate: &iot.PublicKeyCertificate{
+					Format:      v.PublicKeyCertificate.Format.ValueString(),
+					Certificate: v.PublicKeyCertificate.Certificate.ValueString(),
+					X509Details: &iot.X509CertificateDetails{
+						Issuer:             v.PublicKeyCertificate.X509Details.Issuer.ValueString(),
+						Subject:            v.PublicKeyCertificate.X509Details.Subject.ValueString(),
+						StartTime:          v.PublicKeyCertificate.X509Details.StartTime.ValueString(),
+						ExpiryTime:         v.PublicKeyCertificate.X509Details.ExpiryTime.ValueString(),
+						SignatureAlgorithm: v.PublicKeyCertificate.X509Details.SignatureAlgorithm.ValueString(),
+						PublicKeyType:      v.PublicKeyCertificate.X509Details.PublicKeyType.ValueString(),
+					},
+				},
+			})
+		}
+	}
+
+	eventNotificationConfigs := []*iot.EventNotificationConfig{}
+	for _, v := range plan.EventNotificationConfigs {
+		eventNotificationConfigs = append(eventNotificationConfigs, &iot.EventNotificationConfig{
+			PubsubTopicName:  v.PubsubTopicName.ValueString(),
+			SubfolderMatches: v.SubfolderMatches.ValueString(),
+		})
+	}
+
+	var stateNotificationConfig StateNotificationConfigModel
+	plan.StateNotificationConfig.As(ctx, &stateNotificationConfig, basetypes.ObjectAsOptions{})
+	var mqttConfig MqttConfigModel
+	plan.MqttConfig.As(ctx, &mqttConfig, basetypes.ObjectAsOptions{})
+	var httpConfig HttpConfigModel
+	plan.HttpConfig.As(ctx, &httpConfig, basetypes.ObjectAsOptions{})
+
+	return &iot.DeviceRegistry{
+		Id:                       plan.ID.ValueString(),
+		Name:                     plan.Name.ValueString(),
+		LogLevel:                 plan.LogLevel.ValueString(),
+		EventNotificationConfigs: eventNotificationConfigs,
+		Credentials:              credentials,
+		StateNotificationConfig: &iot.StateNotificationConfig{
+			PubsubTopicName: stateNotificationConfig.PubsubTopicName.ValueString(),
+		},
+		MqttConfig: &iot.MqttConfig{
+			MqttEnabledState: mqttConfig.MqttEnabledState.ValueString(),
+		},
+		HttpConfig: &iot.HttpConfig{
+			HttpEnabledState: httpConfig.HttpEnabledState.ValueString(),
+		},
+	}
+}
+
+func mapCbDeviceRegistryToPlanSchema(ctx context.Context, plan *deviceRegistryResourceModel, registry *iot.DeviceRegistry) {
+	plan.Name = types.StringValue(registry.Name)
+	plan.LogLevel = types.StringValue(registry.LogLevel)
+
+	if plan.StateNotificationConfig.IsNull() {
+		attributes := map[string]attr.Value{
+			"pubsub_topic_name": types.StringNull(),
+		}
+		plan.StateNotificationConfig = types.ObjectValueMust(StateNotificationConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"pubsub_topic_name": types.StringValue(registry.StateNotificationConfig.PubsubTopicName),
+		}
+		plan.StateNotificationConfig = types.ObjectValueMust(StateNotificationConfigModelTypes, attributes)
+	}
+
+	if plan.MqttConfig.IsNull() {
+		attributes := map[string]attr.Value{
+			"mqtt_enabled_state": types.StringNull(),
+		}
+		plan.MqttConfig = types.ObjectValueMust(MqttConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"mqtt_enabled_state": types.StringValue(registry.MqttConfig.MqttEnabledState),
+		}
+		plan.MqttConfig = types.ObjectValueMust(MqttConfigModelTypes, attributes)
+	}
+
+	if plan.HttpConfig.IsNull() {
+		attributes := map[string]attr.Value{
+			"http_enabled_state": types.StringNull(),
+		}
+		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
+	} else {
+		attributes := map[string]attr.Value{
+			"http_enabled_state": types.StringValue(registry.HttpConfig.HttpEnabledState),
+		}
+		plan.HttpConfig = types.ObjectValueMust(HttpConfigModelTypes, attributes)
+	}
+
+	if plan.EventNotificationConfigs == nil || (reflect.ValueOf(plan.EventNotificationConfigs).Kind() == reflect.Ptr && reflect.ValueOf(plan.EventNotificationConfigs).IsNil()) {
+	} else {
+		plan.EventNotificationConfigs = []EventNotificationConfigsModel{}
+		for _, eventNotificationConfig := range registry.EventNotificationConfigs {
+			plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
+				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
+				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
+			})
+		}
+	}
+
+	if plan.Credentials.IsNull() {
+		tflog.Debug(ctx, "value detected NULL - CREATE")
+		plan.Credentials = types.ListNull(plan.Credentials.ElementType(ctx))
+	} else {
+		plan.Credentials, _ = types.ListValueFrom(ctx, plan.Credentials.ElementType(ctx), createPlanRegistryCredsFromCb(registry.Credentials))
+	}
+}
+
+func createPlanRegistryCredsFromCb(registryCreds []*iot.RegistryCredential) []CredentialsModel {
+	var credentials = make([]CredentialsModel, 0)
+
+	for _, credential := range registryCreds {
+		m := CredentialsModel{
+			PublicKeyCertificate: PublicKeyCertificateModel{
+				Format:      types.StringValue(credential.PublicKeyCertificate.Format),
+				Certificate: types.StringValue(credential.PublicKeyCertificate.Certificate),
+				X509Details: X509CertificateDetailsModel{
+					Issuer:             types.StringValue(credential.PublicKeyCertificate.X509Details.Issuer),
+					Subject:            types.StringValue(credential.PublicKeyCertificate.X509Details.Subject),
+					StartTime:          types.StringValue(credential.PublicKeyCertificate.X509Details.StartTime),
+					ExpiryTime:         types.StringValue(credential.PublicKeyCertificate.X509Details.ExpiryTime),
+					SignatureAlgorithm: types.StringValue(credential.PublicKeyCertificate.X509Details.SignatureAlgorithm),
+					PublicKeyType:      types.StringValue(credential.PublicKeyCertificate.X509Details.PublicKeyType),
+				},
+			},
+		}
+		credentials = append(credentials, m)
+	}
+
+	return credentials
 }
