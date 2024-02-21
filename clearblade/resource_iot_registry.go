@@ -49,7 +49,8 @@ type deviceRegistryResourceModel struct {
 
 type EventNotificationConfigsModel struct {
 	PubsubTopicName  types.String `tfsdk:"pubsub_topic_name"`
-	SubfolderMatches types.String `tfsdk:"sub_folder_matches"`
+	SubfolderMatches types.String `tfsdk:"subfolder_matches"`
+	SubFolderMatches types.String `tfsdk:"sub_folder_matches"`
 }
 
 type StateNotificationConfigModel struct {
@@ -134,6 +135,12 @@ func (r *deviceRegistryResource) Schema(ctx context.Context, _ resource.SchemaRe
 							MarkdownDescription: "A Cloud Pub/Sub topic name. For example, projects/myProject/topics/deviceEvents.",
 						},
 						"sub_folder_matches": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							MarkdownDescription: "If the subfolder name matches this string exactly, this configuration will be used. The string must not include the leading '/' character. If empty, all strings are matched. " +
+								"This field is used only for telemetry events; subfolders are not supported for state changes.",
+						},
+						"subfolder_matches": schema.StringAttribute{
 							Optional: true,
 							Computed: true,
 							MarkdownDescription: "If the subfolder name matches this string exactly, this configuration will be used. The string must not include the leading '/' character. If empty, all strings are matched. " +
@@ -296,6 +303,12 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 
 	event_notification_configs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.EventNotificationConfigs {
+		// Support both SubfolderMatches and SubFolderMatches
+		if !v.SubFolderMatches.IsNull() && v.SubFolderMatches.ValueString() != "" {
+			v.SubfolderMatches = v.SubFolderMatches
+		} else {
+			v.SubFolderMatches = v.SubfolderMatches
+		}
 		event_notification_configs = append(event_notification_configs, &iot.EventNotificationConfig{
 			PubsubTopicName:  v.PubsubTopicName.ValueString(),
 			SubfolderMatches: v.SubfolderMatches.ValueString(),
@@ -351,6 +364,7 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 		plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
 			PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 			SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
+			SubFolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
 		})
 	}
 
@@ -598,6 +612,12 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 
 	eventNotificationConfigs := []*iot.EventNotificationConfig{}
 	for _, v := range plan.EventNotificationConfigs {
+		// Support both SubfolderMatches and SubFolderMatches
+		if !v.SubFolderMatches.IsNull() && v.SubFolderMatches.ValueString() != "" {
+			v.SubfolderMatches = v.SubFolderMatches
+		} else {
+			v.SubFolderMatches = v.SubfolderMatches
+		}
 		tflog.Debug(ctx, "registry update event 1")
 		ctx = tflog.SetField(ctx, "registry update event 1 notify pubsub topic", v.PubsubTopicName.ValueString())
 		ctx = tflog.SetField(ctx, "registry update event 1 notify subfolder matches", v.SubfolderMatches.ValueString())
@@ -711,6 +731,7 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 			plan.EventNotificationConfigs = append(plan.EventNotificationConfigs, EventNotificationConfigsModel{
 				PubsubTopicName:  types.StringValue(eventNotificationConfig.PubsubTopicName),
 				SubfolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
+				SubFolderMatches: types.StringValue(eventNotificationConfig.SubfolderMatches),
 			})
 		}
 	}
