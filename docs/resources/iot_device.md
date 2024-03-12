@@ -7,10 +7,10 @@ description: |-
 
 # clearblade_iot_device (Resource)
 
-## Example Usage - IoT Device Basic
+## Example usage: IoT device basic
 
 ```terraform
-# Service credential based configuration for the Clearblade IoT Core provider
+# Service credential-based configuration for the Clearblade IoT Core provider
 terraform {
   required_providers {
     clearblade = {
@@ -43,34 +43,34 @@ resource "google_cloudiot_device" "test-device" {
 
 ### Required
 
-- `project` (String) The id of the project.
-- `region` (String) The name of the cloud region.
-- `registry` (Attributes) A container for a group of devices. (see [below for nested schema](#nestedatt--registry))
+- `project` (String) The project ID.
+- `region` (String) The cloud region name.
+- `registry` (Attributes) A container for a group of devices. (See [below for nested schema](#nestedatt--registry))
 
-### Read-Only
+### Read-only
 
 - `last_updated` (String)
 
 <a id="nestedatt--registry"></a>
 
-### Nested Schema for `registry`
+### Nested schema for `registry`
 
 Required:
 
-- `event_notification_configs` (Attributes List) The configuration for notification of telemetry events received from the device. All telemetry events that were successfully published by the device and acknowledged by Clearblade IoT Core are guaranteed to be delivered to Cloud Pub/Sub. (see [below for nested schema](#nestedatt--registry--event_notification_configs))
-- `id` (String) The identifier of this device registry. For example, myRegistry.
-- `log_level` (String) The default logging verbosity for activity from devices in this registry. The verbosity level can be overridden by Device.log_level.
+- `event_notification_configs` (Attributes List) The configuration for notification of telemetry events received from the device. All telemetry events successfully published by the device and acknowledged by Clearblade IoT Core are guaranteed to be delivered to Cloud Pub/Sub. (See [below for nested schema](#nestedatt--registry--event_notification_configs))
+- `id` (String) This device registry's identifier. For example, myRegistry.
+- `log_level` (String) The default logging verbosity for activity from this registry's devices. The verbosity level can be overridden by Device.log_level.
 
 Optional:
 
-- `http_config` (Attributes) The configuration of the HTTP bridge for a device registry. (see [below for nested schema](#nestedatt--registry--http_config))
-- `mqtt_config` (Attributes) The configuration of MQTT for a device registry. (see [below for nested schema](#nestedatt--registry--mqtt_config))
+- `http_config` (Attributes) The configuration of the HTTP bridge for a device registry. (See [below for nested schema](#nestedatt--registry--http_config))
+- `mqtt_config` (Attributes) The configuration of MQTT for a device registry. (See [below for nested schema](#nestedatt--registry--mqtt_config))
 - `name` (String) The resource path name. For example, projects/example-project/locations/us-central1/registries/my-registry.
-- `state_notification_config` (Attributes) The configuration for notification of new states received from the device. (see [below for nested schema](#nestedatt--registry--state_notification_config))
+- `state_notification_config` (Attributes) The configuration for notification of new states received from the device. (See [below for nested schema](#nestedatt--registry--state_notification_config))
 
 <a id="nestedatt--registry--event_notification_configs"></a>
 
-### Nested Schema for `registry.event_notification_configs`
+### Nested schema for `registry.event_notification_configs`
 
 Required:
 
@@ -79,23 +79,23 @@ Required:
 
 <a id="nestedatt--registry--http_config"></a>
 
-### Nested Schema for `registry.http_config`
+### Nested schema for `registry.http_config`
 
 Optional:
 
-- `http_config` (String) If enabled, allows devices to use DeviceService via the HTTP protocol. Otherwise, any requests to DeviceService will fail for this registry.
+- `http_config` (String) If enabled, devices can use DeviceService via the HTTP protocol. Otherwise, any requests to DeviceService will fail for this registry.
 
 <a id="nestedatt--registry--mqtt_config"></a>
 
-### Nested Schema for `registry.mqtt_config`
+### Nested schema for `registry.mqtt_config`
 
 Optional:
 
-- `mqtt_config` (String) If enabled, allows connections using the MQTT protocol. Otherwise, MQTT connections to this registry will fail.
+- `mqtt_config` (String) Allows connections using the MQTT protocol if enabled. Otherwise, MQTT connections to this registry will fail.
 
 <a id="nestedatt--registry--state_notification_config"></a>
 
-### Nested Schema for `registry.state_notification_config`
+### Nested schema for `registry.state_notification_config`
 
 Optional:
 
