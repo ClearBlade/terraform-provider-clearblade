@@ -1,12 +1,12 @@
 ---
-page_title: "Getting Started with the ClearBlade provider"
+page_title: "Getting started with the ClearBlade provider"
 description: |-
   Getting started with the ClearBlade IoT Core provider
 ---
 
-# Getting Started with the ClearBlade Provider
+# Getting started with the ClearBlade provider
 
-# ClearBlade IoT Core Provider
+# ClearBlade IoT Core provider
 
 The ClearBlade provider is used to configure your [ClearBlade IoT Core](https://iot.clearblade.com/iot-core/) infrastructure.
 
@@ -15,13 +15,13 @@ To learn the basics of Terraform using this provider, follow the hands-on
 For more involved examples, try [provisioning a GKE cluster](https://learn.hashicorp.com/tutorials/terraform/gke)
 and deploying [Consul-backed Vault into it using Terraform Cloud](https://learn.hashicorp.com/tutorials/terraform/kubernetes-consul-vault-pipeline).
 
-Already experienced with Terraform? Check out the [Getting Started](/docs/guides/getting_started.md)
+Are you already experienced with Terraform? Check out the [Getting Started](/docs/guides/getting_started.md)
 page for a short introduction to using Terraform with ClearBlade IoT Core.
 
-## Example Usage
+## Example usage
 
 ```terraform
-# Service credential based configuration for the Clearblade IoT Core provider
+# Service credential-based configuration for the Clearblade IoT Core provider
 terraform {
   required_providers {
     clearblade = {
