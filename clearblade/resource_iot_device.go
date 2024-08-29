@@ -60,10 +60,6 @@ type deviceResourceModel struct {
 }
 
 type DeviceCredentialsModel struct {
-	PublicKeyCertificate DevicePublicKeyCertificateModel `tfsdk:"public_key_certificate"`
-}
-
-type DevicePublicKeyCertificateModel struct {
 	ExpirationTime types.String   `tfsdk:"expiration_time"`
 	PublicKey      PublicKeyModel `tfsdk:"public_key"`
 }
@@ -379,14 +375,15 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 	credentials := []*iot.DeviceCredential{}
 	if len(plan.Credentials.Elements()) > 0 {
 		var credentialsModel []DeviceCredentialsModel
-		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		diags = plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		resp.Diagnostics.Append(diags...)
 
 		for _, v := range credentialsModel {
 			credentials = append(credentials, &iot.DeviceCredential{
-				ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
+				ExpirationTime: v.ExpirationTime.ValueString(),
 				PublicKey: &iot.PublicKeyCredential{
-					Format: v.PublicKeyCertificate.PublicKey.Format.ValueString(),
-					Key:    v.PublicKeyCertificate.PublicKey.Key.ValueString(),
+					Format: v.PublicKey.Format.ValueString(),
+					Key:    v.PublicKey.Key.ValueString(),
 				},
 			})
 		}
@@ -519,12 +516,10 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 
 		for _, credential := range device.Credentials {
 			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
+				ExpirationTime: types.StringValue(credential.ExpirationTime),
+				PublicKey: PublicKeyModel{
+					Format: types.StringValue(credential.PublicKey.Format),
+					Key:    types.StringValue(credential.PublicKey.Key),
 				},
 			}
 			credentials = append(credentials, m)
@@ -539,12 +534,10 @@ func (r *deviceResource) Create(ctx context.Context, req resource.CreateRequest,
 
 		for _, credential := range device.Credentials {
 			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
+				ExpirationTime: types.StringValue(credential.ExpirationTime),
+				PublicKey: PublicKeyModel{
+					Format: types.StringValue(credential.PublicKey.Format),
+					Key:    types.StringValue(credential.PublicKey.Key),
 				},
 			}
 			credentials = append(credentials, m)
@@ -710,12 +703,10 @@ func (r *deviceResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 		for _, credential := range device.Credentials {
 			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
+				ExpirationTime: types.StringValue(credential.ExpirationTime),
+				PublicKey: PublicKeyModel{
+					Format: types.StringValue(credential.PublicKey.Format),
+					Key:    types.StringValue(credential.PublicKey.Key),
 				},
 			}
 			credentials = append(credentials, m)
@@ -749,14 +740,15 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 	credentials := []*iot.DeviceCredential{}
 	if len(plan.Credentials.Elements()) > 0 {
 		var credentialsModel []DeviceCredentialsModel
-		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		diags = plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		resp.Diagnostics.Append(diags...)
 
 		for _, v := range credentialsModel {
 			credentials = append(credentials, &iot.DeviceCredential{
-				ExpirationTime: v.PublicKeyCertificate.ExpirationTime.ValueString(),
+				ExpirationTime: v.ExpirationTime.ValueString(),
 				PublicKey: &iot.PublicKeyCredential{
-					Format: v.PublicKeyCertificate.PublicKey.Format.ValueString(),
-					Key:    v.PublicKeyCertificate.PublicKey.Key.ValueString(),
+					Format: v.PublicKey.Format.ValueString(),
+					Key:    v.PublicKey.Key.ValueString(),
 				},
 			})
 		}
@@ -787,7 +779,7 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 		},
 	}).
 		// UpdateMask(`blocked,credentials,logLevel,metadata`).Do()
-	UpdateMask(`blocked,credentials,gatewayConfig.gatewayAuthMethod,logLevel,metadata`).Do()
+		UpdateMask(`blocked,credentials,gatewayConfig.gatewayAuthMethod,logLevel,metadata`).Do()
 	// Could not create a new device, unexpected error: googleapi: Error 400: The field mask 'updateMask' must contain mutable fields. The following fields are mutable: ["blocked","credentials","gatewayConfig.gatewayAuthMethod","logLevel","metadata"]
 
 	if err != nil {
@@ -893,12 +885,10 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 		for _, credential := range device.Credentials {
 			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
+				ExpirationTime: types.StringValue(credential.ExpirationTime),
+				PublicKey: PublicKeyModel{
+					Format: types.StringValue(credential.PublicKey.Format),
+					Key:    types.StringValue(credential.PublicKey.Key),
 				},
 			}
 			credentials = append(credentials, m)
@@ -913,12 +903,10 @@ func (r *deviceResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 		for _, credential := range device.Credentials {
 			m := DeviceCredentialsModel{
-				PublicKeyCertificate: DevicePublicKeyCertificateModel{
-					ExpirationTime: types.StringValue(credential.ExpirationTime),
-					PublicKey: PublicKeyModel{
-						Format: types.StringValue(credential.PublicKey.Format),
-						Key:    types.StringValue(credential.PublicKey.Key),
-					},
+				ExpirationTime: types.StringValue(credential.ExpirationTime),
+				PublicKey: PublicKeyModel{
+					Format: types.StringValue(credential.PublicKey.Format),
+					Key:    types.StringValue(credential.PublicKey.Key),
 				},
 			}
 			credentials = append(credentials, m)
