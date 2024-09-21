@@ -29,21 +29,22 @@ type devicesDataSourceModel struct {
 
 // devicesModel maps device schema data.
 type devicesModel struct {
-	ID                 types.String                      `tfsdk:"id"`
-	Name               types.String                      `tfsdk:"name"`
-	NumID              types.String                      `tfsdk:"num_id"`
-	Credentials        []DevicePublicKeyCertificateModel `tfsdk:"credentials"`
-	LastHeartbeatTime  types.String                      `tfsdk:"last_heartbeat_time"`
-	LastEventTime      types.String                      `tfsdk:"last_event_time"`
-	LastStateTime      types.String                      `tfsdk:"last_state_time"`
-	LastConfigAckTime  types.String                      `tfsdk:"last_config_ack_time"`
-	LastConfigSendTime types.String                      `tfsdk:"last_config_send_time"`
-	Blocked            types.Bool                        `tfsdk:"blocked"`
-	LastErrorTime      types.String                      `tfsdk:"last_error_time"`
-	LastErrorStatus    LastErrorStatusModel              `tfsdk:"last_error_status"`
-	Config             ConfigModel                       `tfsdk:"config"`
-	State              StateModel                        `tfsdk:"state"`
-	LogLevel           types.String                      `tfsdk:"log_level"`
+	ID          types.String             `tfsdk:"id"`
+	Name        types.String             `tfsdk:"name"`
+	NumID       types.String             `tfsdk:"num_id"`
+	Credentials []DeviceCredentialsModel `tfsdk:"credentials"`
+	// Credentials        []DevicePublicKeyCertificateModel `tfsdk:"credentials"`
+	LastHeartbeatTime  types.String         `tfsdk:"last_heartbeat_time"`
+	LastEventTime      types.String         `tfsdk:"last_event_time"`
+	LastStateTime      types.String         `tfsdk:"last_state_time"`
+	LastConfigAckTime  types.String         `tfsdk:"last_config_ack_time"`
+	LastConfigSendTime types.String         `tfsdk:"last_config_send_time"`
+	Blocked            types.Bool           `tfsdk:"blocked"`
+	LastErrorTime      types.String         `tfsdk:"last_error_time"`
+	LastErrorStatus    LastErrorStatusModel `tfsdk:"last_error_status"`
+	Config             ConfigModel          `tfsdk:"config"`
+	State              StateModel           `tfsdk:"state"`
+	LogLevel           types.String         `tfsdk:"log_level"`
 	// Metadata           types.Map                         `tfsdk:"metadata"`
 	GatewayConfig GatewayConfigModel `tfsdk:"gateway_config"`
 }
@@ -280,7 +281,7 @@ func (d *devicesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		}
 
 		for _, credential := range device.Credentials {
-			deviceState.Credentials = append(deviceState.Credentials, DevicePublicKeyCertificateModel{
+			deviceState.Credentials = append(deviceState.Credentials, DeviceCredentialsModel{
 				ExpirationTime: types.StringValue(credential.ExpirationTime),
 				PublicKey: PublicKeyModel{
 					Format: types.StringValue(credential.PublicKey.Format),

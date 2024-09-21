@@ -282,7 +282,8 @@ func (r *deviceRegistryResource) Create(ctx context.Context, req resource.Create
 	if len(plan.Credentials.Elements()) > 0 {
 
 		var credentialsModel []CredentialsModel
-		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		diags = plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		resp.Diagnostics.Append(diags...)
 		for _, v := range credentialsModel {
 			credentials = append(credentials, &iot.RegistryCredential{
 				PublicKeyCertificate: &iot.PublicKeyCertificate{
@@ -590,7 +591,8 @@ func (r *deviceRegistryResource) Update(ctx context.Context, req resource.Update
 	credentials := []*iot.RegistryCredential{}
 	if len(plan.Credentials.Elements()) > 0 {
 		var credentialsModel []CredentialsModel
-		plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		diags = plan.Credentials.ElementsAs(ctx, &credentialsModel, false)
+		resp.Diagnostics.Append(diags...)
 
 		for _, v := range credentialsModel {
 			credentials = append(credentials, &iot.RegistryCredential{
